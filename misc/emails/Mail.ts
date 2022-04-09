@@ -18,3 +18,31 @@ export async function sendMailUserVerify(email: string, name: string, token: num
       .encoding('utf-8')
   })
 }
+
+export async function sendMailUserUpdate(email: string, name: string) {
+  return await Mail.sendLater((message: MessageContract) => {
+    message
+      .from(Env.get('SMTP_USERNAME'), 'GTAMarket')
+      .to(email)
+      .subject('Seus dados foram alterados')
+      .htmlView('emails/users/update', {
+        name,
+        date: format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss"),
+      })
+      .encoding('utf-8')
+  })
+}
+
+export async function sendMailUserDelete(email: string, name: string) {
+  return await Mail.sendLater((message: MessageContract) => {
+    message
+      .from(Env.get('SMTP_USERNAME'), 'GTAMarket')
+      .to(email)
+      .subject('Sua conta foi deletada')
+      .htmlView('emails/users/delete', {
+        name,
+        date: format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss"),
+      })
+      .encoding('utf-8')
+  })
+}

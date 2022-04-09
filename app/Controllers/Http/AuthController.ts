@@ -1,12 +1,15 @@
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 
+import User from 'App/Models/User'
+
 import { ILoginUserBody } from 'App/Interfaces/ILoginUserBody'
 
 import InternalServerErrorException from 'App/Exceptions/InternalServerErrorException'
 import InvalidBodyException from 'App/Exceptions/InvalidBodyException'
-import User from 'App/Models/User'
 import UserNotFoundException from 'App/Exceptions/UserNotFoundException'
 import UserNotVerifiedException from 'App/Exceptions/UserNotVerifiedException'
+import UserLoginFailedException from 'App/Exceptions/UserLoginFailedException'
+import Redis from '@ioc:Adonis/Addons/Redis'
 
 export default class AuthController {
   public login = async ({ request, response, auth }: HttpContextContract) => {
@@ -28,11 +31,13 @@ export default class AuthController {
           expiresIn: remember ? '6h' : '3h',
         })
 
+        await Redis.set(`user:${user.id}`, JSON.stringify(user))
+
         return response
           .status(200)
           .json({ status: 200, message: 'Login realizado com sucesso.', token })
       } catch {
-        return response.status(401).json({ status: 401, message: 'Usuário ou senha inválidos.' })
+        throw new UserLoginFailedException('Usuário ou senha inválidos.')
       }
     } catch (error) {
       throw new InternalServerErrorException(error.message)

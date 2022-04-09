@@ -1,7 +1,7 @@
 import { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 
 import UserNotVerifiedException from 'App/Exceptions/UserNotVerifiedException'
-import UserNeedLoginException from 'App/Exceptions/UserNeedLoginException'
+import AuthErrorException from 'App/Exceptions/AuthErrorException'
 
 export default class Auth {
   public async handle({ auth }: HttpContextContract, next: () => Promise<void>) {
@@ -12,7 +12,7 @@ export default class Auth {
 
       await next()
     } catch (error) {
-      throw new UserNeedLoginException('Você precisa fazer login.')
+      throw new AuthErrorException(error.message)
     }
   }
 }

@@ -32,4 +32,6 @@ Route.group(() => {
   Route.get('/me', 'UsersController.me').middleware(['Auth'])
   Route.post('/create', 'UsersController.create')
   Route.get('/verify/:token', 'UsersController.verify')
+  Route.post('/update', 'UsersController.update').middleware(['Auth'])
+  Route.delete('/delete/:id', 'UsersController.delete').middleware(['Auth'])
 }).prefix('users')
