@@ -1,6 +1,7 @@
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 
 import Hash from '@ioc:Adonis/Core/Hash'
+import Redis from '@ioc:Adonis/Addons/Redis'
 
 import User from 'App/Models/User'
 import UsersVerify from 'App/Models/UsersVerify'
@@ -21,16 +22,51 @@ import UserTokenInvalidException from 'App/Exceptions/UserTokenInvalidException'
 import InvalidParamsException from 'App/Exceptions/InvalidParamsException'
 import NoPermissionException from 'App/Exceptions/NoPermissionException'
 import UserNotFoundException from 'App/Exceptions/UserNotFoundException'
+import UserInvalidPasswordException from 'App/Exceptions/UserInvalidPasswordException'
 
 import { addDays } from 'date-fns'
-import UserInvalidPasswordException from 'App/Exceptions/UserInvalidPasswordException'
-import Redis from '@ioc:Adonis/Addons/Redis'
 
 export default class UsersController {
+  public all = async ({ auth }: HttpContextContract) => {
+    try {
+      if (auth.user!.group != 'ADMIN') throw new NoPermissionException('You do not have permission')
+
+      console.time()
+      const usersRedis = await Redis.get('users')
+
+      if (usersRedis) {
+        const users = JSON.parse(usersRedis)
+
+        console.log('redis users')
+        console.timeEnd()
+
+        return users
+      }
+
+      const users = await User.all()
+      console.timeEnd()
+
+      console.log('no redis users')
+
+      await Redis.set('users', JSON.stringify(users))
+
+      return users
+    } catch (error) {
+      throw new InternalServerErrorException(error.message)
+    }
+  }
+
   public me = async ({ auth }: HttpContextContract) => {
     try {
       const userRedis = await Redis.get(`user:${auth.user!.id}`)
-      const user = JSON.parse(String(userRedis))
+
+      if (userRedis) {
+        const user = JSON.parse(userRedis)
+
+        return user
+      }
+
+      const user = await User.find(auth.user!.id)
 
       return user
     } catch (error) {

@@ -29,6 +29,7 @@ Route.group(() => {
 }).prefix('auth')
 
 Route.group(() => {
+  Route.get('/', 'UsersController.all').middleware(['Auth'])
   Route.get('/me', 'UsersController.me').middleware(['Auth'])
   Route.post('/create', 'UsersController.create')
   Route.get('/verify/:token', 'UsersController.verify')
