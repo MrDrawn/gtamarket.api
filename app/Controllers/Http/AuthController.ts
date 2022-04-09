@@ -1,5 +1,7 @@
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 
+import Redis from '@ioc:Adonis/Addons/Redis'
+
 import User from 'App/Models/User'
 
 import { ILoginUserBody } from 'App/Interfaces/ILoginUserBody'
@@ -9,7 +11,6 @@ import InvalidBodyException from 'App/Exceptions/InvalidBodyException'
 import UserNotFoundException from 'App/Exceptions/UserNotFoundException'
 import UserNotVerifiedException from 'App/Exceptions/UserNotVerifiedException'
 import UserLoginFailedException from 'App/Exceptions/UserLoginFailedException'
-import Redis from '@ioc:Adonis/Addons/Redis'
 
 export default class AuthController {
   public login = async ({ request, response, auth }: HttpContextContract) => {

@@ -31,22 +31,15 @@ export default class UsersController {
     try {
       if (auth.user!.group != 'ADMIN') throw new NoPermissionException('You do not have permission')
 
-      console.time()
       const usersRedis = await Redis.get('users')
 
       if (usersRedis) {
         const users = JSON.parse(usersRedis)
 
-        console.log('redis users')
-        console.timeEnd()
-
         return users
       }
 
       const users = await User.all()
-      console.timeEnd()
-
-      console.log('no redis users')
 
       await Redis.set('users', JSON.stringify(users))
 
@@ -95,6 +88,10 @@ export default class UsersController {
         email,
         password,
       })
+
+      const users = await User.all()
+
+      await Redis.set('users', JSON.stringify(users))
 
       const token = getRandomInteger(100000, 999999)
 
@@ -187,6 +184,10 @@ export default class UsersController {
 
       await Redis.set(`user:${user.id}`, JSON.stringify(user))
 
+      const users = await User.all()
+
+      await Redis.set('users', JSON.stringify(users))
+
       await sendMailUserUpdate(email, name)
 
       return response.status(200).json({ status: 200, message: 'Usuário atualizado com sucesso.' })
@@ -210,6 +211,10 @@ export default class UsersController {
       await user.delete()
 
       await Redis.del(`user:${user.id}`)
+
+      const users = await User.all()
+
+      await Redis.set('users', JSON.stringify(users))
 
       await sendMailUserDelete(user.email, user.name)
 
