@@ -30,7 +30,7 @@ Route.group(() => {
 
 Route.group(() => {
   Route.get('/', 'UsersController.all').middleware(['Auth'])
-  Route.get('/me', 'UsersController.me').middleware(['Auth'])
+  Route.get('/user', 'UsersController.user').middleware(['Auth'])
   Route.post('/create', 'UsersController.create')
   Route.get('/verify/:token', 'UsersController.verify')
   Route.post('/recovery', 'UsersController.recovery')
@@ -38,3 +38,12 @@ Route.group(() => {
   Route.post('/update', 'UsersController.update').middleware(['Auth'])
   Route.delete('/delete/:id', 'UsersController.delete').middleware(['Auth'])
 }).prefix('users')
+
+Route.group(() => {
+  Route.get('/', 'UsersStoresController.all')
+  Route.get('/store/:reference', 'UsersStoresController.store')
+  Route.post('/create', 'UsersStoresController.create')
+  Route.delete('/delete/:id', 'UsersStoresController.delete')
+})
+  .prefix('stores')
+  .middleware(['Auth'])

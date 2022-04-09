@@ -58,7 +58,7 @@ export default class UsersController {
     }
   }
 
-  public me = async ({ auth }: HttpContextContract) => {
+  public user = async ({ auth }: HttpContextContract) => {
     try {
       const userRedis = await Redis.get(`user:${auth.user!.id}`)
 
@@ -87,11 +87,13 @@ export default class UsersController {
       if (!name || !username || !email || !password)
         throw new InvalidBodyException('Missing required fields')
 
-      if (
-        (await User.findBy('username', username)) !== null ||
-        (await User.findBy('email', email)) !== null
-      )
-        throw new UserAlreadyExistException('Usuário ou e-mail já cadastrado.')
+      const usersRedis = await Redis.get('users')
+      const users = JSON.parse(usersRedis ? usersRedis : '[]')
+
+      users.map((user) => {
+        if (user.username !== null || user.email !== null)
+          throw new UserAlreadyExistException('Usuário ou e-mail já cadastrado.')
+      })
 
       const user = await User.create({
         name,
@@ -100,7 +102,7 @@ export default class UsersController {
         password,
       })
 
-      const users = await User.all()
+      users.push(user)
 
       await Redis.set('users', JSON.stringify(users))
 

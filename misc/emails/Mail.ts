@@ -61,3 +61,18 @@ export async function sendMailUserDelete(email: string, name: string) {
       .encoding('utf-8')
   })
 }
+
+export async function sendMailStoreDelete(email: string, name: string, address: string) {
+  return await Mail.sendLater((message: MessageContract) => {
+    message
+      .from(Env.get('SMTP_USERNAME'), 'GTAMarket')
+      .to(email)
+      .subject('Sua conta foi deletada')
+      .htmlView('emails/stores/delete', {
+        name,
+        address,
+        date: format(new Date(), "dd/MM/yyyy 'às' HH:mm:ss"),
+      })
+      .encoding('utf-8')
+  })
+}
