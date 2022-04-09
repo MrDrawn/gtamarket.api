@@ -7,11 +7,16 @@ import User from 'App/Models/User'
 import UsersVerify from 'App/Models/UsersVerify'
 
 import { ICreateUserBody } from 'App/Interfaces/ICreateUserBody'
-import { IConfirmUserParams } from 'App/Interfaces/IConfirmUserParams'
+import { IVerifyUserParams } from 'App/Interfaces/IVerifyUserParams'
 import { IUpdateUserBody } from 'App/Interfaces/IUpdateUserBody'
 import { IDeleteUserParams } from 'App/Interfaces/IDeleteUserParams'
 
-import { sendMailUserDelete, sendMailUserUpdate, sendMailUserVerify } from 'Misc/emails/Mail'
+import {
+  sendMailUserDelete,
+  sendMailUserRecovery,
+  sendMailUserUpdate,
+  sendMailUserVerify,
+} from 'Misc/emails/Mail'
 import { getRandomInteger } from 'Misc/utils/GenerateRandomNumbers'
 
 import InvalidBodyException from 'App/Exceptions/InvalidBodyException'
@@ -25,6 +30,10 @@ import UserNotFoundException from 'App/Exceptions/UserNotFoundException'
 import UserInvalidPasswordException from 'App/Exceptions/UserInvalidPasswordException'
 
 import { addDays } from 'date-fns'
+import { IResetPasswordUserParams } from 'App/Interfaces/IResetPasswordUserParams'
+import UsersRecovery from 'App/Models/UsersRecovery'
+import { IResetPasswordUserBody } from 'App/Interfaces/IResetPasswordUserBody'
+import { IRecoverPasswordUserBody } from 'App/Interfaces/IRecoverPasswordUserBody'
 
 export default class UsersController {
   public all = async ({ auth }: HttpContextContract) => {
@@ -60,6 +69,8 @@ export default class UsersController {
       }
 
       const user = await User.find(auth.user!.id)
+
+      await Redis.set(`user:${user?.id}`, JSON.stringify(user))
 
       return user
     } catch (error) {
@@ -111,7 +122,7 @@ export default class UsersController {
 
   public verify = async ({ request, response }: HttpContextContract) => {
     try {
-      const { token } = request.params() as IConfirmUserParams
+      const { token } = request.params() as IVerifyUserParams
 
       if (!token) throw new InvalidParamsException('Invalid token')
 
@@ -132,8 +143,7 @@ export default class UsersController {
           expireIn: addDays(new Date(), 1),
         })
 
-        verify.delete()
-        await verify.save()
+        await verify.delete()
 
         await sendMailUserVerify(user.email, user.name, token)
 
@@ -145,7 +155,86 @@ export default class UsersController {
 
       await verify.delete()
 
+      const users = await User.all()
+
+      await Redis.set('users', JSON.stringify(users))
+
       return response.status(200).json({ status: 200, message: 'E-mail verificado com sucesso.' })
+    } catch (error) {
+      throw new InternalServerErrorException(error.message)
+    }
+  }
+
+  public recovery = async ({ request, response }: HttpContextContract) => {
+    try {
+      if (!request.hasBody()) throw new InvalidBodyException('Body cannot be empty')
+
+      const { email } = request.body() as IRecoverPasswordUserBody
+
+      if (!email) throw new InvalidBodyException('E-mail não informado.')
+
+      const user = await User.findBy('email', email)
+
+      if (!user) throw new InvalidBodyException('Usuário não encontrado.')
+
+      const userRecovery = await UsersRecovery.findBy('user_id', user.id)
+
+      if (userRecovery) await userRecovery.delete()
+
+      const token = getRandomInteger(100000, 999999)
+
+      await UsersRecovery.create({
+        userId: user.id,
+        token,
+        expireIn: addDays(new Date(), 1),
+      })
+
+      await sendMailUserRecovery(user.email, user.name, token)
+
+      return response
+        .status(200)
+        .json({ status: 200, message: 'E-mail de recuperação enviado com sucesso.' })
+    } catch (error) {
+      throw new InternalServerErrorException(error.message)
+    }
+  }
+
+  public reset = async ({ request, response }: HttpContextContract) => {
+    try {
+      if (!request.hasBody()) throw new InvalidBodyException('Body cannot be empty')
+
+      const { token } = request.params() as IResetPasswordUserParams
+
+      const { password } = request.body() as IResetPasswordUserBody
+
+      if (!token) throw new InvalidParamsException('Invalid token')
+
+      if (!password) throw new InvalidBodyException('Password cannot be empty')
+
+      const recovery = await UsersRecovery.findBy('token', token)
+
+      if (!recovery) throw new UserTokenInvalidException('Token inválido.')
+
+      const user = await User.findBy('id', recovery.userId)
+
+      if (!user) throw new InvalidBodyException('Usuário não encontrado.')
+
+      if (recovery.expireIn < new Date()) {
+        await recovery.delete()
+
+        throw new UserTokenInvalidException('Token expirado, solicite uma nova recuperação.')
+      }
+
+      user.password = password
+      await user.save()
+
+      await recovery.delete()
+
+      const users = await User.all()
+
+      await Redis.set('users', JSON.stringify(users))
+
+      return response.status(200).json({ status: 200, message: 'Senha alterada com sucesso.' })
     } catch (error) {
       throw new InternalServerErrorException(error.message)
     }

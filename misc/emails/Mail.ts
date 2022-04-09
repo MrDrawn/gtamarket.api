@@ -33,6 +33,21 @@ export async function sendMailUserUpdate(email: string, name: string) {
   })
 }
 
+export async function sendMailUserRecovery(email: string, name: string, token: number) {
+  return await Mail.sendLater((message: MessageContract) => {
+    message
+      .from(Env.get('SMTP_USERNAME'), 'GTAMarket')
+      .to(email)
+      .subject('Recuperação de senha')
+      .htmlView('emails/users/recovery', {
+        name,
+        token,
+        expireIn: format(addDays(new Date(), 1), 'dd/MM/yyyy'),
+      })
+      .encoding('utf-8')
+  })
+}
+
 export async function sendMailUserDelete(email: string, name: string) {
   return await Mail.sendLater((message: MessageContract) => {
     message
