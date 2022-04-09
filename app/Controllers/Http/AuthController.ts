@@ -13,7 +13,7 @@ export default class AuthController {
     try {
       if (!request.hasBody()) throw new InvalidBodyException('Body cannot be empty')
 
-      const { email, password } = request.body() as ILoginUserBody
+      const { email, password, remember } = request.body() as ILoginUserBody
 
       if (!email || !password) throw new InvalidBodyException('Missing required fields')
 
@@ -24,7 +24,9 @@ export default class AuthController {
       if (!user.active) throw new UserNotVerifiedException('Usuário não verificado.')
 
       try {
-        const token = await auth.use('api').attempt(email, password)
+        const { token } = await auth.use('api').attempt(email, password, {
+          expiresIn: remember ? '6h' : '3h',
+        })
 
         return response
           .status(200)
