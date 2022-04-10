@@ -40,10 +40,11 @@ Route.group(() => {
 }).prefix('users')
 
 Route.group(() => {
-  Route.get('/', 'UsersStoresController.all')
-  Route.get('/store/:reference', 'UsersStoresController.store')
-  Route.post('/create', 'UsersStoresController.create')
-  Route.delete('/delete/:id', 'UsersStoresController.delete')
+  Route.get('/', 'StoresController.all')
+  Route.get('/store/:reference', 'StoresController.store')
+  Route.post('/create', 'StoresController.create')
+  Route.post('/update/:reference', 'StoresController.update')
+  Route.delete('/delete/:id', 'StoresController.delete')
 })
   .prefix('stores')
   .middleware(['Auth'])

@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { BaseModel, column } from '@ioc:Adonis/Lucid/Orm'
 
-export default class UsersStore extends BaseModel {
+export default class Store extends BaseModel {
   @column({ isPrimary: true })
   public id: number
 

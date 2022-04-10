@@ -2,11 +2,14 @@ import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 
 import Redis from '@ioc:Adonis/Addons/Redis'
 
-import UsersStore from 'App/Models/UsersStore'
+import Store from 'App/Models/Store'
 
 import { IStoreReferenceParams } from 'App/Interfaces/IStoreReferenceParams'
 import { ICreateStoreBody } from 'App/Interfaces/ICreateStoreBody'
+import { IUpdateStoreBody } from 'App/Interfaces/IUpdateStoreBody'
 import { IDeleteStoreParams } from 'App/Interfaces/IDeleteStoreParams'
+
+import { sendMailStoreDelete } from 'Misc/emails/Mail'
 
 import NoPermissionException from 'App/Exceptions/NoPermissionException'
 import InvalidParamsException from 'App/Exceptions/InvalidParamsException'
@@ -16,11 +19,9 @@ import UserNotFoundException from 'App/Exceptions/UserNotFoundException'
 import StoreAlreadyExistException from 'App/Exceptions/StoreAlreadyExistException'
 import InternalServerErrorException from 'App/Exceptions/InternalServerErrorException'
 
-import { sendMailStoreDelete } from 'Misc/emails/Mail'
-
 import { v4 as uuid } from 'uuid'
 
-export default class UsersStoresController {
+export default class StoresController {
   public all = async ({ auth }: HttpContextContract) => {
     try {
       if (auth.user!.group != 'ADMIN') throw new NoPermissionException('You do not have permission')
@@ -33,7 +34,7 @@ export default class UsersStoresController {
         return stores
       }
 
-      const stores = await UsersStore.all()
+      const stores = await Store.all()
 
       await Redis.set('stores', JSON.stringify(stores))
 
@@ -60,7 +61,7 @@ export default class UsersStoresController {
         return store
       }
 
-      const store = await UsersStore.findBy('reference', reference)
+      const store = await Store.findBy('reference', reference)
 
       if (!store) throw new StoreNotFoundException('Store not found')
 
@@ -93,7 +94,7 @@ export default class UsersStoresController {
 
       const reference = uuid()
 
-      const store = await UsersStore.create({
+      const store = await Store.create({
         userId: auth.user!.id,
         reference,
         type,
@@ -117,6 +118,48 @@ export default class UsersStoresController {
     }
   }
 
+  public update = async ({ request, response, auth }: HttpContextContract) => {
+    try {
+      if (!request.hasBody()) throw new InvalidBodyException('Body cannot be empty')
+
+      const { reference } = request.params() as IStoreReferenceParams
+
+      if (!reference) throw new InvalidParamsException('Invalid reference')
+
+      const { type, name, ip, description, address } = request.body() as IUpdateStoreBody
+
+      if (!type || !name || !ip || !description || !address)
+        throw new InvalidBodyException('Missing required fields')
+
+      const store = await Store.findBy('reference', reference)
+
+      if (!store) throw new StoreNotFoundException('Store not found')
+
+      if (store.userId != auth.user!.id)
+        throw new NoPermissionException('You do not have permission')
+
+      store.merge({
+        type,
+        name,
+        ip,
+        description,
+        address,
+      })
+
+      await store.save()
+
+      await Redis.set(`store:${reference}`, JSON.stringify(store))
+
+      const stores = await Store.all()
+
+      await Redis.set('stores', JSON.stringify(stores))
+
+      return response.status(200).json({ status: 200, message: 'Loja atualizada.' })
+    } catch (error) {
+      throw new InternalServerErrorException(error.message)
+    }
+  }
+
   public delete = async ({ auth, request, response }: HttpContextContract) => {
     try {
       const { id } = request.params() as IDeleteStoreParams
@@ -127,7 +170,7 @@ export default class UsersStoresController {
 
       if (!user) throw new UserNotFoundException('User not found')
 
-      const store = await UsersStore.findBy('id', id)
+      const store = await Store.findBy('id', id)
 
       if (!store) throw new StoreNotFoundException('Store not found')
 
@@ -138,7 +181,7 @@ export default class UsersStoresController {
 
       await Redis.del(`store:${store.reference}`)
 
-      const stores = await UsersStore.all()
+      const stores = await Store.all()
 
       await Redis.set('stores', JSON.stringify(stores))
 
